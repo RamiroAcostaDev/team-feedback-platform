@@ -12,3 +12,65 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  memberships      Membership[]
+  sentFeedback     Feedback[]   @relation("SentFeedback")
+  receivedFeedback Feedback[]   @relation("ReceivedFeedback")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  memberships Membership[]
+  cycles      FeedbackCycle[]
+}
+
+model Membership {
+  userId         String
+  organizationId String
+  role           String
+  joinedAt       DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@id([userId, organizationId])
+}
+
+model FeedbackCycle {
+  id             String   @id @default(uuid())
+  organizationId String
+  startDate      DateTime
+  endDate        DateTime
+  status         String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  feedback     Feedback[]
+}
+
+model Feedback {
+  id          String   @id @default(uuid())
+  cycleId     String
+  fromUserId  String
+  toUserId    String
+  rating      Int
+  comment     String
+  isAnonymous Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  cycle    FeedbackCycle @relation(fields: [cycleId], references: [id])
+  fromUser User          @relation("SentFeedback", fields: [fromUserId], references: [id])
+  toUser   User          @relation("ReceivedFeedback", fields: [toUserId], references: [id])
+
+  @@unique([cycleId, fromUserId, toUserId])
+}
